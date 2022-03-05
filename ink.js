@@ -82,13 +82,18 @@ app.get("/new2", jsonParser, (req, res) => {
 app.get("/login", jsonParser, function (request, response) {
   var email = request.query.email;
   var password = request.query.password;
+  var reslt=[];
   if (email && password) {
     con.query(
       "SELECT * FROM users WHERE email = ? AND password = ?",
       [email, password],
       function (error, results, fields) {
         if (results.length > 0) {
-          response.send("ok");
+          reslt.push({
+            id:results[0].id,
+            username:results[0].username,
+          })
+          response.send(reslt);
         } else {
           response.send("Incorrect Username and/or Password!");
         }
@@ -163,6 +168,8 @@ app.get("/get_comment_image", function (req, res) {
   });
 });
 
+
+//هذا يغير  البايو
 app.get("/bio", jsonParser, (req, res) => {
   var email = req.query.email;
   var password = req.query.password;
@@ -195,12 +202,49 @@ function bio(bio, email, password) {
   );
 }
 
-app.get("/bio2", jsonParser, type, (req, res) => {
+//هذا يغير اليوز نيم 
+app.get("/update_username", jsonParser, (req, res) => {
+  var email = req.query.email;
+  var password = req.query.password;
+  if (email && password) {
+    con.query(
+      "SELECT * FROM users WHERE email = ? AND password = ?",
+      [email, password],
+      function (error, results, fields) {
+        if (results.length == results.length) {
+          res.send("ok");
+
+          usernameedit(req.query.username, email, password);
+        } else {
+          res.send("Incorrect Username and/or Password!");
+        }
+        res.end();
+      }
+    );
+  }
+});
+
+function usernameedit(username, email, password) {
+  con.query(
+    "UPDATE users SET username = ? WHERE email = ? AND password = ?",
+    [username, email, password],
+    function (error, results, fields) {
+      if (error) throw error;
+      console.log("den");
+    }
+  );
+}
+
+
+
+
+
+app.post("/bio2", jsonParser, type, (req, res) => {
   var profile_photo = req.file.path;
-  var email = req.body.email;
-  var password = req.body.password;
+  var email = req.query.email;
+  var password = req.query.password;
   bio2(profile_photo, email, password);
-  res.send();
+  res.send("god");
 });
 function bio2(profile_photo, email, password) {
   var sql =
@@ -217,6 +261,7 @@ app.get("/getpio", (req, res) => {
     var result = [];
     result.push({
       id: rows[0].id,
+      username: rows[0].username,
       profile_photo: rows[0].profile_photo,
       bio: rows[0].bio,
     });
@@ -517,6 +562,7 @@ app.get("/my_user_Post", (req, res) => {
                         title: row[index].title,
                         image: row[index].image,
                         likes: result.length,
+                        post:row.length,
                         IsLike: true,
                       });
                     }
@@ -531,6 +577,7 @@ app.get("/my_user_Post", (req, res) => {
                     title: row[index].title,
                     image: row[index].image,
                     likes: result.length,
+                    post:row.length,
                     IsLike: false,
                   });
                 }
@@ -548,6 +595,118 @@ app.get("/my_user_Post", (req, res) => {
     }
   });
 });
+
+//اضهار منشورات ااشخص عل منطي لايك او لا
+app.get("/userid", (req, res) => {
+  var id = req.query.id;
+  var results = [];
+
+  con.query("SELECT * FROM users WHERE id =?", [id], (err, rows) => {
+    for (let i = 0; i < rows.length; i++) {
+      con.query(
+        "SELECT * FROM Post WHERE user_id =?",
+        [rows[i].id],
+        (err, row) => {
+          for (let index = 0; index < row.length; index++) {
+            con.query(
+              "SELECT * FROM likes WHERE post_id =?",
+              [row[index].post_id],
+              (err, result) => {
+                for (let a = 0; a < result.length; a++) {
+                  if (result[a].user_id == result[a].user_id ) {
+                    if (index == results.length) {
+                      results.push({
+                        post_id: row[index].post_id,
+                        account_name: rows[i].username,
+                        profile_photo: rows[i].profile_photo,
+                        title: row[index].title,
+                        image: row[index].image,
+                        likes: result.length,
+                        post:row.length,
+                        IsLike: true,
+                      });
+                    }
+                  }
+                }
+
+                if (index == results.length) {
+                  results.push({
+                    post_id: row[index].post_id,
+                    account_name: rows[i].username,
+                    profile_photo: rows[i].profile_photo,
+                    title: row[index].title,
+                    image: row[index].image,
+                    likes: result.length,
+                    post:row.length,
+                    IsLike: false,
+                  });
+                }
+
+                if (results.length == row.length) {
+                  console.log("h");
+
+                  res.send(results);
+                }
+              }
+            );
+          }
+        }
+      );
+    }
+  });
+});
+ //هذا وضيفته يعرف اذا ضايفه او لا 
+app.get("/userfollow_or_unfollow",(req,res)=>{
+  var fan_id = req.query.fan_id;
+  var account_id = req.query.account_id;
+  var result=[];
+
+
+    con.query("SELECT * FROM follows WHERE fan_id=? AND account_id=?",[fan_id,account_id],(err, rowing) => {
+ 
+
+        for (var index = 0; index < rowing.length; index++) {
+         
+        
+        if (rowing[index].fan_id==fan_id&&rowing[index].account_id==account_id) 
+
+        {
+
+             
+             
+                    result.push({like:true});
+                    res.send(result);
+                  
+            
+          }
+
+        }
+         if(rowing.length>0){
+          
+         }else{
+            
+          result.push({like:false});
+        
+          res.send(result);
+      
+         }
+
+
+        
+     
+       
+        
+      
+    }
+  );
+
+ 
+
+
+});
+
+
+
 
 app.get("/user", (req, res) => {
   var id = req.query.id;
@@ -567,7 +726,7 @@ app.get("/user", (req, res) => {
               (err, result) => {
                 for (let a = 0; a < result.length; a++) {
                   if (result[a].user_id == result[a].user_id) {
-                    if (z == results.length) {
+                    if (a == results.length) {
                       results.push({
                         id: row[z].post_id,
 
@@ -580,7 +739,7 @@ app.get("/user", (req, res) => {
                   }
                 }
 
-                if (z == results.length) {
+                if (a == results.length) {
                   results.push({
                     id: row[z].post_id,
 
@@ -590,27 +749,32 @@ app.get("/user", (req, res) => {
                     IsLike: false,
                   });
                 }
-                if (results.length == row.length) {
+             
                   console.log("h");
-
                   res.send(results);
-                }
+               
+                
               }
             );
+           
           }
         }
       );
     }
+ 
   });
 });
 
+
+/*
 app.get("/userbio", (req, res) => {
   var id = req.query.id;
 
   con.query("SELECT * FROM Post WHERE post_id=?", [id], (err, row) => {
+
     con.query(
-      "SELECT * FROM users WHERE id=?",
-      [row[0].user_id],
+      "SELECT * FROM users WHERE id=?",[row[0].user_id],
+    
       (err, rows) => {
         var result = [];
         result.push({
@@ -626,6 +790,8 @@ app.get("/userbio", (req, res) => {
     );
   });
 });
+
+*/
 
 /*
 var array=[0,1];
@@ -723,7 +889,9 @@ app.get("/getfollowing4", (req, res) => {
   con.query(
     "SELECT * FROM follows WHERE account_id=?",
     [account_id],
-    (err, rows) => {}
+    (err, rows) => {
+
+    }
   );
 });
 
@@ -1200,11 +1368,21 @@ app.get("/get_homepage_image", function (req, res) {
 app.get("/serch", (req, res) => {
   var username = req.query.username;
   var sq =
-    "SELECT id, profile_photo ,username FROM users WHERE username LIKE '" +
-    username +
-    "%'";
+    "SELECT id, profile_photo ,username FROM users WHERE username LIKE '"+username+"%'";
+
   con.query(sq, (err, row) => {
+  
     res.send(row);
+  });
+});
+
+app.get("/serch2", (req, res) => {
+  var username = req.query.username;
+  var id = req.query.id;
+  
+    con.query("SELECT id, profile_photo ,username FROM users WHERE username LIKE '"+username+"%' AND id !=?",[id], (err, rows)  => {
+  
+      res.send(rows);
   });
 });
 app.get("/get_serch_image", function (req, res) {
