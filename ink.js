@@ -7,6 +7,7 @@ const fs = require("fs");
 const { location } = require("express/lib/response");
 var jsonParser = bodyParser.urlencoded({ extended: false });
 var app = express();
+var human = require('human-time');
 app.use(express.json());
 var con = mysql.createConnection({
   host: "localhost",
@@ -379,12 +380,14 @@ app.get("/like", jsonParser, (req, res) => {
 app.get("/comment", (req, res) => {
   var id = req.query.id;
   var comment = req.query.comment;
-  con.query("SELECT * FROM Post WHERE id=?", [id], (err, rows) => {
+  var user_id =req.query.user_id;
+  con.query("SELECT * FROM Post WHERE post_id=?",[id], (err, rows) => {
+    console.log(rows);
     var sql =
       "INSERT INTO comment (post_id,user_id,comment) VALUES ('" +
-      rows[0].id.toString() +
+      id +
       "','" +
-      rows[0].user_id.toString() +
+      user_id +
       "','" +
       comment +
       "')";
@@ -505,6 +508,7 @@ app.get("/homepage3", (req, res) => {
                       title: rows[i].title,
                       image: rows[i].image,
                       likes: result.length,
+                      time:human(new Date(rows[index].date+ 5 * 1000)),
                       IsLike: true,
                     });
                   }
@@ -520,6 +524,7 @@ app.get("/homepage3", (req, res) => {
                   title: rows[i].title,
                   image: rows[i].image,
                   likes: result.length,
+                  time:human(new Date(rows[index].date+ 5 * 1000)),
                   IsLike: false,
                 });
               }
@@ -563,12 +568,13 @@ app.get("/my_user_Post", (req, res) => {
                         image: row[index].image,
                         likes: result.length,
                         post:row.length,
+                        time:human(new Date(row[index].date+ 5 * 1000)),
                         IsLike: true,
                       });
                     }
                   }
                 }
-
+                
                 if (index == results.length) {
                   results.push({
                     post_id: row[index].post_id,
@@ -578,6 +584,7 @@ app.get("/my_user_Post", (req, res) => {
                     image: row[index].image,
                     likes: result.length,
                     post:row.length,
+                    time:human(new Date(row[index].date+ 5 * 1000)),
                     IsLike: false,
                   });
                 }
@@ -599,6 +606,7 @@ app.get("/my_user_Post", (req, res) => {
 //اضهار منشورات ااشخص عل منطي لايك او لا
 app.get("/userid", (req, res) => {
   var id = req.query.id;
+  var myid=req.query.myid;
   var results = [];
 
   con.query("SELECT * FROM users WHERE id =?", [id], (err, rows) => {
@@ -613,7 +621,7 @@ app.get("/userid", (req, res) => {
               [row[index].post_id],
               (err, result) => {
                 for (let a = 0; a < result.length; a++) {
-                  if (result[a].user_id == result[a].user_id ) {
+                  if (result[a].user_id == myid ) {
                     if (index == results.length) {
                       results.push({
                         post_id: row[index].post_id,
@@ -623,6 +631,7 @@ app.get("/userid", (req, res) => {
                         image: row[index].image,
                         likes: result.length,
                         post:row.length,
+                        time:human(new Date(row[index].date+ 5 * 1000)),
                         IsLike: true,
                       });
                     }
@@ -638,6 +647,7 @@ app.get("/userid", (req, res) => {
                     image: row[index].image,
                     likes: result.length,
                     post:row.length,
+                    time:human(new Date(row[index].date+ 5 * 1000)),
                     IsLike: false,
                   });
                 }
@@ -647,13 +657,27 @@ app.get("/userid", (req, res) => {
 
                   res.send(results);
                 }
+             
+               
+               
               }
             );
           }
+
+          if(row.length>0){
+
+          }else{
+            results.push({
+             post:0,
+            });
+            res.send(results);
+          }
+         
         }
       );
     }
   });
+ 
 });
  //هذا وضيفته يعرف اذا ضايفه او لا 
 app.get("/userfollow_or_unfollow",(req,res)=>{
@@ -959,17 +983,51 @@ app.get("/getcomment", (req, res) => {
 
   con.query("SELECT * FROM comment WHERE post_id=?", [post_id], (err, rows) => {
     var result = [];
-    for (var i = 0; i < rows.length; i++) {
+    for (let i = 0; i < rows.length; i++) {
       con.query(
-        "SELECT * FROM users WHERE id = " + rows[i].user_id,
-        (err, row) => {
-          for (var a = 0; a < rows.length; a++) {
-            result.push({
-              username: row[0].username,
-              profile_photo: row[0].profile_photo,
-              comment: rows[a].comment,
-            });
+        "SELECT * FROM users WHERE id =?",[rows[i].user_id],(err, row) => {
+        for (let index = 0; index < row.length; index++) {
+        
+        
+         
+       
+  
+          const value = date.format((new Date(rows[i].time,)),'YY/M-D/h:mm');
+        ///  console.log("date and time : " + value+5 *1000,);
+         
+        
+      ///  console.log(getTimeInterval(Date.now() + rows[i].time));
+        
+          
+       
+
+            console.log(row[index].username);
+
+
+             if(row.length>0){
+               console.log("ll");
+              result.push({
+
+                username:row[index].username,
+                profile_photo: row[index].profile_photo,
+                comment: rows[i].comment,
+                time:human(new Date(rows[i].time+ 5 * 1000)),
+              });
+
+
+             }
+             
+
+             
+        
+             
+           
+             
+            
           }
+           
+       
+          
           if (result.length == rows.length) {
             res.send(result);
           }
@@ -978,6 +1036,25 @@ app.get("/getcomment", (req, res) => {
     }
   });
 });
+//هذا تابع للكومنتات
+app.get("/get_usernamr_image",(req, res)=>{
+  var id=req.query.id;
+  con.query("SELECT id, username , profile_photo FROM users WHERE id =?",[id],(err,row)=>{
+
+   res.send(row);
+
+
+  });
+
+});
+
+
+
+const date = require('date-and-time')
+
+// Formatting the date and time
+// by using date.format() method
+
 
 app.get("/follow", jsonParser, (req, res) => {
   var account_id = req.query.account_id;
@@ -1069,7 +1146,7 @@ app.get("/getfollowing", (req, res) => {
                 IsLike: false,
               });
 
-              res.send(result);
+             // res.send(result);
             }
           );
         }
@@ -1089,39 +1166,54 @@ app.get("/getfollowing6666", (req, res) => {
     [account_id],
     (err, rows) => {
       if (rows.length > 0) {
+      //  console.log(rows);
         for (let i = 0; i < rows.length; i++) {
           con.query(
             "SELECT * FROM users WHERE id =?",
             [rows[i].fan_id],
             (err, row) => {
+             // console.log(row);
               con.query(
                 "SELECT * FROM follows WHERE fan_id=? AND account_id=?",
-                [account_id, rows[i].fan_id],
+                [rows[i].fan_id, account_id],
                 (err, rowing) => {
-                  console.log(rowing);
+                 console.log(rowing);
 
                   for (let index = 0; index < rowing.length; index++) {
-                    if (rowing[index].fan_id == account_id) {
-                      result.push({
-                        id: row[0].id,
-                        username: row[0].username,
-                        profile_photo: row[0].profile_photo,
-                        like: true,
-                      });
+                    
+                    if (account_id == account_id) {
+                    
+                        result.push({
+                          id: row[0].id,
+                          username: row[0].username,
+                          profile_photo: row[0].profile_photo,
+                          like: true,
+                        });
+                       
+                  
+                        console.log("jj");
+                    
+                      
+                    
 
-                      res.send(result);
+                     
+                      /// res.send(result);
+                         
+                      
                     }
                   }
-
-                  result.push({
-                    id: row[0].id,
-                    username: row[0].username,
-                    profile_photo: row[0].profile_photo,
-                    like: false,
-                  });
+                 
+                    result.push({
+                      id: row[0].id,
+                      username: row[0].username,
+                      profile_photo: row[0].profile_photo,
+                      like: false,
+                    });
+                  
+              
 
                   if (rows.length == result.length) {
-                    res.send(result);
+                   res.send(result);
                   }
                 }
               );
@@ -1134,6 +1226,69 @@ app.get("/getfollowing6666", (req, res) => {
     }
   );
 });
+//الاشعارات المتابعين
+app.get("/getfollowing6", (req, res) => {
+  var account_id = req.query.account_id;
+  var result = [];
+ 
+  con.query("SELECT * FROM follows INNER JOIN users ON follows.account_id=2 AND users.id=follows.fan_id",[account_id], (err, rows) => {
+      
+
+
+ for (let i = 0; i < rows.length; i++) {
+   
+ con.query("SELECT * FROM follows WHERE  account_id=?",[rows[i].fan_id],(err,rowing)=>{
+   for (let index = 0; index < rowing.length; index++) {
+      
+  if(rowing[index].fan_id==account_id){
+    console.log("kk");
+
+    if(result.length==i)
+    {
+      result.push({
+        id: rows[i].id,
+        username: rows[i].username,
+        profile_photo: rows[i].profile_photo,
+        like: true,
+      });
+
+ 
+     }
+
+    
+  }
+
+
+   }
+  
+   if(result.length==i)
+   {
+   result.push({
+     id: rows[i].id,
+     username: rows[i].username,
+     profile_photo: rows[i].profile_photo,
+     like: false,
+   });
+ 
+    }
+  
+   if(result.length==rows.length){
+     res.send(result);
+  
+    }
+
+
+     });
+ }
+
+});
+});
+
+
+
+
+
+
 
 app.get("/homepage344", (req, res) => {
   var user_id = req.query.user_id;
