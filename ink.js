@@ -36,6 +36,24 @@ function AddNotification(user_id, type, from, to) {
     console.log("INTO");
   });
 }
+/*
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server);
+app.get("/socit", (req, res) => {
+  var connection=req.query.connection;
+  console.log("kk");
+  io.on(connection, (socket) => {
+    socket.on(connection, (msg) => {
+      io.emit('chat message', msg);
+      console.log(socket);
+    });
+  });
+});
+*/
+
+
 
 function AddNotification_delete(user_id, type, from, to) {
   var notifications2 =
@@ -237,6 +255,37 @@ function usernameedit(username, email, password) {
 }
 
 
+app.get("/change_password", jsonParser, (req, res) => {
+  var email = req.query.email;
+  var password = req.query.password;
+
+  if (email && password) {
+    con.query(
+      "SELECT * FROM users WHERE email = ? AND password = ?",[email, password],(err, row)=>{
+     
+        if (row.length == row.length) {
+          res.send("ok");
+
+          change_password(req.query.change_password, email, password);
+        } else {
+          res.send("Incorrect Username and/or Password!");
+        }
+        res.end();
+      }
+    );
+  }
+});
+
+function change_password(change_password, email, password) {
+  con.query(
+    "UPDATE users SET password = ? WHERE email = ? AND password = ?",
+    [change_password, email, password],
+    function (error, results, fields) {
+      if (error) throw error;
+      console.log("den");
+    }
+  );
+}
 
 
 
@@ -293,7 +342,7 @@ app.post("/postimg", jsonParser, type, (req, res) => {
     [email, password],
     (err, rows) => {
       var sql =
-        "INSERT INTO Post (user_id,image) VALUES ('" + 2 + "','" + image + "')";
+        "INSERT INTO Post (user_id,image) VALUES ('" + 23 + "','" + image + "')";
 
       con.query(sql, (err, rows) => {
         console.log("good");
@@ -313,7 +362,7 @@ app.get("/post10", jsonParser, (req, res) => {
     (err, rows) => {
       var sql =
         "INSERT INTO Post (user_id,title) VALUES ('" +
-        rows[0].id.toString() +
+        rows[0].id.toString()+
         "','" +
         title +
         "')";
@@ -508,7 +557,7 @@ app.get("/homepage3", (req, res) => {
                       title: rows[i].title,
                       image: rows[i].image,
                       likes: result.length,
-                      time:human(new Date(rows[index].date+ 5 * 1000)),
+                      time:human(new Date(rows[i].date+ 5 * 1000)),
                       IsLike: true,
                     });
                   }
@@ -524,12 +573,13 @@ app.get("/homepage3", (req, res) => {
                   title: rows[i].title,
                   image: rows[i].image,
                   likes: result.length,
-                  time:human(new Date(rows[index].date+ 5 * 1000)),
+                  time:human(new Date(rows[i].date+ 5 * 1000)),
                   IsLike: false,
                 });
               }
               if (results.length == rows.length) {
                 console.log("h");
+               /// console.log(human(new Date(rows[i].date+ 5 * 100)));
 
                 res.send(results);
                 break;
@@ -547,16 +597,27 @@ app.get("/my_user_Post", (req, res) => {
   var results = [];
 
   con.query("SELECT * FROM users WHERE id =?", [id], (err, rows) => {
+ 
     for (let i = 0; i < rows.length; i++) {
       con.query(
         "SELECT * FROM Post WHERE user_id =?",
         [rows[i].id],
         (err, row) => {
+          if(row.length>0){
+            console.log("null_post");
+          }else{
+            results.push({
+              post:null,
+            });
+            res.send(results);
+          }
+     
           for (let index = 0; index < row.length; index++) {
             con.query(
               "SELECT * FROM likes WHERE post_id =?",
               [row[index].post_id],
               (err, result) => {
+
                 for (let a = 0; a < result.length; a++) {
                   if (result[a].user_id == id) {
                     if (index == results.length) {
@@ -594,8 +655,11 @@ app.get("/my_user_Post", (req, res) => {
 
                   res.send(results);
                 }
+             
               }
             );
+          
+          
           }
         }
       );
@@ -648,6 +712,7 @@ app.get("/userid", (req, res) => {
                     likes: result.length,
                     post:row.length,
                     time:human(new Date(row[index].date+ 5 * 1000)),
+                    private:rows[i].private,
                     IsLike: false,
                   });
                 }
@@ -669,6 +734,7 @@ app.get("/userid", (req, res) => {
           }else{
             results.push({
              post:0,
+             private:rows[i].private
             });
             res.send(results);
           }
@@ -730,7 +796,71 @@ app.get("/userfollow_or_unfollow",(req,res)=>{
 });
 
 
+app.get("/private", jsonParser, (req, res) => {
+  var email = req.query.email;
+  var password = req.query.password;
+  if (email && password) {
+    con.query(
+      "SELECT * FROM users WHERE email = ? AND password = ?",
+      [email, password],
+      function (error, results, fields) {
+        if (results.length == results.length) {
+          res.send("ok");
+          con.query("SELECT private FROM users  WHERE email = ? AND password = ? ",[email,password],(err,rowsing)=>{
+            for (let index = 0; index < rowsing.length; index++) {
+            
+            if(rowsing[index].private==null){
+              bio(req.query.private, email, password);
+            }
+          
+            if(rowsing[index].private==1){
+              bio2(null, email, password);
+            }
+          }
+          })
+        
+         
+        } else {
+          res.send("Incorrect Username and/or Password!");
+        }
+        res.end();
+      }
+    );
+  }
+});
 
+function bio(bio, email, password) {
+  con.query(
+    "UPDATE users SET private = ? WHERE email = ? AND password = ?",
+    [bio, email, password],
+    function (error, results, fields) {
+      if (error) throw error;
+      console.log("hi");
+    }
+  );
+}
+
+function bio2(bio, email, password) {
+  con.query(
+    "UPDATE users SET private = ? WHERE email = ? AND password = ?",
+    [bio, email, password],
+    function (error, results, fields) {
+      if (error) throw error;
+      console.log("hi2");
+    }
+  );
+}
+app.get("/get_private",(req,res)=>{
+  var email = req.query.email;
+  var password = req.query.password;
+  con.query("SELECT private FROM users  WHERE email = ? AND password = ? ",[email,password],(err,row)=>{
+            
+    res.send(row);
+
+  })
+
+
+});
 
 app.get("/user", (req, res) => {
   var id = req.query.id;
@@ -887,20 +1017,32 @@ app.get("/getMylikes", (req, res) => {
       req.query.user_id +
       " INNER JOIN users ON users.id =likes.user_id ",
     (err, rows) => {
+      if(rows.length>0){
+      }else{
+       result.push({like_null:null});
+       res.send(result);
+      }
       for (let index = 0; index < rows.length; index++) {
         result.push({
-          username: rows[0].username,
-          profile_photo: rows[0].profile_photo,
+          username: rows[index].username,
+          profile_photo: rows[index].profile_photo,
 
-          user_id: rows[0].id,
-
+          user_id: rows[index].id,
+          time2:rows[index].time,
+          time:human(new Date(rows[index].time+ 5 * 1000)),
           title: rows[index].title,
           image: rows[index].image,
+          islike:null,
         });
-
+      
         if (result.length == rows.length) {
+         console.log("kk");
           res.send(result);
+          
+        
         }
+      
+
       }
     }
   );
@@ -1050,7 +1192,162 @@ app.get("/get_usernamr_image",(req, res)=>{
 
 
 
-const date = require('date-and-time')
+app.get("/getcomment22", (req, res) => {
+  var post_id = req.query.post_id;
+   var user_id =req.query.user_id;
+  var result = [];
+ /// var i="SELECT * FROM follows INNER JOIN users ON follows.account_id=? AND users.id=follows.fan_id";
+  con.query("SELECT * FROM `comment` INNER JOIN `users` ON comment.post_id=? AND comment.user_id=users.id", [post_id], (err, row) => {
+
+    for (let x = 0; x < row.length; x++) {
+    
+      if(row[x].user_id==user_id){
+        result.push({
+          id:row[x].id,
+          username:row[x].username,
+          profile_photo: row[x].profile_photo,
+          comment: row[x].comment,
+          comsetmy:true,
+          id_comment:row[x].id_comment,
+          time:human(new Date(row[x].time+ 5 * 1000)),
+       });
+      
+       if(result.length==row.length){
+
+      res.send(result);
+
+
+      }
+      }
+
+  
+    }
+
+   con.query("SELECT * FROM comment WHERE post_id=? AND user_id !=?",[post_id,user_id],(err,rowing)=>{
+    for (let s = 0; s < rowing.length; s++) {
+   
+
+    con.query("SELECT * FROM users WHERE id=?",[rowing[s].user_id],(err,rows)=>{
+     
+    for (let x = 0; x < rowing.length; x++) {
+    
+   
+      result.push({
+         id:rows[0].id,
+         username:rows[0].username,
+         profile_photo: rows[0].profile_photo,
+         comment: rowing[x].comment,
+         comsetmy:false,
+         id_comment:rowing[x].id_comment,
+         time:human(new Date(rowing[x].time+ 5 * 1000)),
+      });
+  
+    
+    }
+
+    if(result.length==row.length){
+
+     res.send(result);
+
+
+      }
+
+      
+ 
+    });
+  }
+
+
+  });
+  
+
+  });
+});
+
+app.get("/dlate_comment",(req,res)=>{
+  var id_comment = req.query.id_comment;
+
+  
+  con.query("DELETE FROM comment WHERE id_comment=?",[id_comment],(err,row)=>{
+
+   res.send("den");
+
+  });
+
+});
+app.get("/get_notifications_comment_",(req,res)=>{
+  var user_id = req.query.user_id;
+  var result =[];
+
+    con.query("SELECT * FROM users INNER JOIN Post ON users.id =? AND Post.user_id=users.id",[user_id],(err,rowing)=>{
+
+       for (let index = 0; index < rowing.length; index++) {
+    
+      
+      con.query("SELECT * FROM comment WHERE post_id=?",[rowing[index].post_id],(err,rows)=>{
+
+      
+      res.send(rows);
+        
+
+     });
+
+       }
+    
+   });
+
+});
+
+
+app.get("/get_notifications_comment",(req,res)=>{
+  var user_id = req.query.user_id;
+  var result =[];
+//  var i="SELECT * FROM users INNER JOIN Post ON users.id =? AND Post.user_id=users.id";
+
+//   var x="SELECT * FROM Post INNER JOIN users ON Post.user_id =? AND users.id=Post.user_id"
+  con.query("SELECT * FROM Post WHERE user_id=?",[user_id],(err,row)=>{
+    for (let a = 0; a < row.length; a++) {
+        console.log(row[a].post_id);
+   
+    // var ss="SELECT * FROM comment WHERE post_id =? AND user_id!=?"
+    con.query("SELECT * FROM comment INNER JOIN users ON comment.post_id =? AND comment.user_id!=? AND users.id=comment.user_id",[row[a].post_id,row[a].user_id],(err,rowing)=>{
+
+       for (let index = 0; index < rowing.length; index++) {
+   
+      
+       try{
+
+        result.push({
+          user_id: rowing[index].user_id,
+          username: rowing[index].username,
+          profile_photo: rowing[index].profile_photo,
+          comment:rowing[index].comment,
+          image:row[a].image,
+          title:row[a].title,
+          time2:rowing[index].time,
+          time:human(new Date(rowing[index].time+ 5 * 1000)),
+        });
+
+        res.send(result);
+
+       }catch(_){
+
+       }
+      } 
+  
+  
+    
+  
+  });
+
+  }
+  });
+
+});
+
+const date = require('date-and-time');
+const { assert } = require("console");
+const { init } = require("express/lib/application");
 
 // Formatting the date and time
 // by using date.format() method
@@ -1084,6 +1381,7 @@ app.get("/follow", jsonParser, (req, res) => {
                   result.push({
                     follow: true,
                   });
+                  console.log("den");
 
                   // AddNotification(row[0].id,2,row[0].id,account_id);
                   res.send(result);
@@ -1156,7 +1454,7 @@ app.get("/getfollowing", (req, res) => {
     }
   );
 });
-
+/*
 app.get("/getfollowing6666", (req, res) => {
   var account_id = req.query.account_id;
   var result = [];
@@ -1226,12 +1524,14 @@ app.get("/getfollowing6666", (req, res) => {
     }
   );
 });
+*/
+
 //الاشعارات المتابعين
 app.get("/getfollowing6", (req, res) => {
   var account_id = req.query.account_id;
   var result = [];
  
-  con.query("SELECT * FROM follows INNER JOIN users ON follows.account_id=2 AND users.id=follows.fan_id",[account_id], (err, rows) => {
+  con.query("SELECT * FROM follows INNER JOIN users ON follows.account_id=? AND users.id=follows.fan_id",[account_id], (err, rows) => {
       
 
 
@@ -1248,6 +1548,8 @@ app.get("/getfollowing6", (req, res) => {
       result.push({
         id: rows[i].id,
         username: rows[i].username,
+        time2:rows[i].time,
+        time:human(new Date(rowing[index].time+ 5 * 1000)),
         profile_photo: rows[i].profile_photo,
         like: true,
       });
@@ -1267,6 +1569,8 @@ app.get("/getfollowing6", (req, res) => {
      id: rows[i].id,
      username: rows[i].username,
      profile_photo: rows[i].profile_photo,
+     time2:rows[i].time,
+     time:human(new Date(rows[i].time+ 5 * 1000)),
      like: false,
    });
  
@@ -1285,8 +1589,330 @@ app.get("/getfollowing6", (req, res) => {
 });
 
 
+app.get("/follow_requests", jsonParser, (req, res) => {
+  var account_id = req.query.account_id;
+  var result = [];
+  con.query(
+    "SELECT * FROM users WHERE email = '" +
+      req.query.email +
+      "'And password ='" +
+      req.query.password +
+      "'",
+    (err, row) => {
+      if (row.length != 0) {
+        // var sql='SELECT * FROM likes WHERE post_id=? AND user_id = ?',[email,password];
+        con.query(
+          "SELECT * FROM follow_requests WHERE account_id =? AND fan_id = ?",
+          [account_id, row[0].id],
+          (err, row1) => {
+            if (row1.length == 0) {
+              ///  var sql = "INSERT INTO Post (user_id,title) VALUES ('"+rows[0].id.toString()+"','"+title+"')";
+              con.query(
+                "INSERT INTO follow_requests (account_id,fan_id) VALUES ('" +
+                  account_id +
+                  "','" +
+                  row[0].id.toString() +
+                  "')",
+                (err, rows) => {
+                  result.push({
+                    follow: true,
+                  });
+                  console.log("den");
+
+                  // AddNotification(row[0].id,2,row[0].id,account_id);
+                  res.send(result);
+                }
+              );
+            } else {
+          
+              con.query(
+                "DELETE FROM follow_requests WHERE account_id = ? AND fan_id = ?",
+                [account_id, row[0].id],
+                (err, rows) => {
+                  result.push({
+                    follow: false,
+                  });
+                  /// AddNotification_delete(row[0].id,2,row[0].id,account_id);
+                  res.send(result);
+                }
+              );
+            }
+          }
+        );
+      } else {
+        res.send("error");
+      }
+    }
+  );
+});
+//يجيب المتابعين الي في الركوست
+app.get("/get_follow_requests",(req,res)=>{
+  var account_id = req.query.account_id;
+  var result = [];
+ 
+  con.query("SELECT * FROM follow_requests INNER JOIN users ON follow_requests.account_id=? AND users.id=follow_requests.fan_id",[account_id], (err, rows) => {
+      
 
 
+ for (let i = 0; i < rows.length; i++) {
+   
+   if(result.length==i)
+   {
+   result.push({
+     id: rows[i].id,
+     account_id:rows[i].account_id,
+     username: rows[i].username,
+     profile_photo: rows[i].profile_photo,
+     time:human(new Date(rows[i].time+ 5 * 1000)),
+   
+   });
+ 
+    }
+  
+   if(result.length==rows.length){
+     res.send(result);
+  
+    }
+
+
+
+ }
+
+});
+
+});
+
+//الموافقه على طلب الركوست
+app.get("/den_follow_requests",(req,res)=>{
+  var account_id = req.query.account_id;
+  var result = [];
+  con.query("SELECT * FROM users WHERE email = '"+req.query.email+"'And password ='"+req.query.password+"'",(err, row) => {
+    
+    
+
+      if (row.length != 0) {
+        
+
+        con.query("SELECT * FROM follow_requests WHERE account_id =? AND fan_id = ?",[account_id, row[0].id],(err, row1) => {
+          
+            if (row1.length == 0) {
+            
+              con.query("INSERT INTO follow_requests (account_id,fan_id) VALUES ('" +account_id +"','" +row[0].id.toString() +"')",(err, rows) => {
+              
+                  result.push({
+                    follow: true,
+                  });
+                  console.log("den");
+
+                  // AddNotification(row[0].id,2,row[0].id,account_id);
+                  res.send(result);
+                }
+              );
+            } else {
+          
+        
+              con.query("DELETE FROM follow_requests WHERE account_id = ? AND fan_id = ?",[account_id, row[0].id],(err, rows) => {
+              
+              
+                  result.push({
+                    follow: false,
+                  });
+                  /// AddNotification_delete(row[0].id,2,row[0].id,account_id);
+                  res.send(result);
+
+                  con.query("INSERT INTO follows (account_id,fan_id) VALUES ('" +account_id +"','" +row[0].id+"')",(err, rows) => {
+            
+                  
+                    // AddNotification(row[0].id,2,row[0].id,account_id);
+            
+                  }
+                );
+
+                }
+              );
+            }
+          }
+        );
+      } else {
+        res.send("error");
+      }
+    }
+  );
+
+
+});
+
+//يعرف اذا ضايفه في الركوست او لا
+
+app.get("/follow_true",(req,res)=>{
+  var fan_id = req.query.fan_id;
+  var account_id = req.query.account_id;
+  var result=[];
+
+
+    con.query("SELECT * FROM follow_requests WHERE fan_id=? AND account_id=?",[fan_id,account_id],(err, rowing) => {
+ 
+
+        for (var index = 0; index < rowing.length; index++) {
+         
+        
+        if (rowing[index].fan_id==fan_id&&rowing[index].account_id==account_id) 
+
+        {
+
+             
+             
+                    result.push({request:true});
+                    res.send(result);
+                  
+            
+          }
+
+        }
+         if(rowing.length>0){
+          
+         }else{
+            
+          result.push({request:false});
+        
+          res.send(result);
+      
+         }
+
+
+        
+     
+       
+        
+      
+    }
+  );
+
+ 
+
+});
+
+
+
+//وظيفته يحذف طلبات الركوستات 
+app.get("/delete_follow_requests",(req,res)=>{
+  var account_id = req.query.account_id;
+  var result = [];
+  con.query( "SELECT * FROM users WHERE email ='"+req.query.email+"'And password ='"+req.query.password +"'",(err, row) => {
+  
+
+      if (row.length != 0) {
+       
+        con.query("SELECT * FROM follow_requests WHERE account_id =? AND fan_id = ?",[account_id, row[0].id],(err, row1) => {
+         
+            if (row1.length == 0) {
+            
+              res.send("no");
+
+            } else {
+ 
+          
+              con.query("DELETE FROM follow_requests WHERE account_id = ? AND fan_id = ?",[account_id, row[0].id],(err, rows) => {
+              
+                  result.push({
+                    follow: false,
+                  });
+               
+                  res.send(result);
+                }
+              );
+            }
+          }
+        );
+      } else {
+        res.send("error");
+      }
+    
+    });
+
+});
+//اظافه تاك 
+app.get("/add_mention",(req,res)=>{
+  var post_id = req.query.post_id;
+  var user_id = req.query.user_id;
+  var results = [];
+   
+   con.query("SELECT * FROM users WHERE email ='"+req.query.email+"'And password ='"+req.query.password +"'",(err,row)=>{
+   
+    //console.log(row);
+    con.query("SELECT * FROM Post WHERE post_id=?",[post_id],(err,row1)=>{
+
+      
+      con.query("INSERT INTO mention (fan_id,post_id,user_id) VALUES ('"+row[0].id+"','" +post_id+"','"+user_id+"')",(err, rows) => {
+            
+      
+   
+        res.send("den");
+    });
+  
+    })
+    
+   
+
+   });
+});
+
+
+//يجلب الي مسويلي ناك
+
+app.get("/get_mention",(req,res)=>{
+  var user__id = req.query.user__id;
+  var results = [];
+  con.query("SELECT * FROM mention INNER JOIN users JOIN Post ON mention.user__id=? AND users.id=mention.fan_id AND Post.post_id=mention.post_id",[user__id],(err,rowing)=>{
+    for (let index = 0; index < rowing.length; index++) {
+
+    if(results.length==index){
+    results.push({mention:null,fan_id:rowing[index].fan_id,user__id:rowing[index].user__id,username:rowing[index].username,profile_photo:rowing[index].profile_photo,title:rowing[index].title,image:rowing[index].image,time2:rowing[index].time,time:human(new Date(rowing[index].time2+ 5 * 1000)),});
+    }
+    if(results.length==rowing.length){
+      res.send(results);
+    }
+    
+    }
+    
+   
+   
+   });
+});
+
+app.get("/serch_mention",(req,res)=>{
+  var username = req.query.username;
+  // var us=username.substring(1);
+  var sql2 ="SELECT `id`, `username` ,`profile_photo` , `bio` FROM users WHERE username REGEXP '[a-z 0-9].["+username+"]'";
+ // var sql = "SELECT `id`, `username` ,`profile_photo`  FROM users WHERE id LIKE '%"+us+"%'";
+  con.query(sql2,(err,row)=>{
+    res.send(row);
+   // console.log(row);
+  });
+
+});
+
+app.get("/serch_mention2",(req,res)=>{
+  var username = req.query.username;
+  var id = req.query.id;
+  var results = [];
+  var sql2 ="SELECT `id`, `username` ,`profile_photo` , `bio` FROM users WHERE username =?";
+  con.query(sql2,[username],(err,rowing)=>{
+    for (let index = 0; index < rowing.length; index++) {
+
+    if(rowing[index].id==id){
+      results.push({username:rowing[index].username,profile_photo:rowing[index].profile_photo,bio:rowing[index].bio,id:rowing[index].id,myid:true});
+    }else{
+      results.push({username:rowing[index].username,profile_photo:rowing[index].profile_photo,bio:rowing[index].bio,id:rowing[index].id,myid:false});
+    }
+
+    }
+    res.send(results);
+    
+   // console.log(row);
+  });
+
+});
 
 
 
